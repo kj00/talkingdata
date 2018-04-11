@@ -1,0 +1,5 @@
+ 
+  mutate_at(
+    valid[, colnames(valid) != "is_attributed"],
+    categorical_features, as.character)
+  

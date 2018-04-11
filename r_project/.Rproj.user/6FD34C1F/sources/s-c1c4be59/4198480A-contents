@@ -1,0 +1,171 @@
+##
+pacman::p_load(knitr, tidyverse, data.table, lubridate, lightgbm)
+#set.seed(84)               
+#options(scipen = 9999, warn = -1, digits= 4)
+
+##
+train_path <- "/home/paperspace/data/talkingdata/train_sep_9_added.csv"
+test_path  <- "/home/paperspace/data/talkingdata/test.csv"
+
+
+##
+cat("Reading the training data...\n")
+train <- fread(train_path)
+
+## restrict time as test data
+train <- copy(train[hour %in% 4:14])
+
+## Modelling
+print("Prepare data for modeling")
+
+val_ratio <- 0.9
+train.index <- caret::createDataPartition(train$is_attributed, p = val_ratio, list = FALSE)
+
+
+#
+train <- train[train.index,]
+valid  <- train[-train.index,]
+
+train[, day := NULL]
+valid[, day := NULL]
+
+#
+cat("train size : ", dim(train), "\n")
+cat("valid size : ", dim(valid), "\n")
+
+#
+categorical_features = c("app", "device", "os", "channel", "hour")
+
+#
+cat("Creating the 'dtrain' for modeling...")
+
+dtrain = lgb.Dataset(data = data.matrix(
+  train %>% 
+    select(-is_attributed, -ip)
+), 
+label = train$is_attributed, categorical_feature = categorical_features)
+
+rm(train)
+#
+cat("Creating the 'dvalid' for modeling...")
+dvalid = lgb.Dataset(
+  data = data.matrix(valid %>% 
+                       select(-is_attributed, -ip)), 
+  label = valid$is_attributed, 
+  categorical_feature = categorical_features)
+
+##
+rm(valid, train.index)
+invisible(gc())
+
+##
+print("Modelling")
+params = list(objective = "binary", 
+             # tree_learner="data",
+              metric = "auc", 
+              learning_rate= 0.1,
+              num_leaves= 7,
+              max_depth= 4,
+              min_child_samples= 100,
+              max_bin= 100,
+              subsample= 0.7, 
+              subsample_freq= 1,
+              colsample_bytree= 0.7,
+              min_child_weight= 0,
+              min_split_gain= 0,
+              scale_pos_weight= 200)
+
+##
+model <- lgb.train(params, dtrain,
+                   valids = list(validation = dvalid),
+                   nthread = 4,
+                   nrounds = 1500,
+                   verbose= 1, 
+                   early_stopping_rounds = 50,
+                   eval_freq = 25)
+
+##
+rm(dtrain, dvalid)
+invisible(gc())
+
+
+cat("Validation AUC @ best iter: ", max(unlist(model$record_evals[["validation"]][["auc"]][["eval"]])), "\n\n")
+
+
+##save
+#lgb.save(model, "mod/lgb_v5")
+model <- lgb.load("mod/lgb_v3")
+
+
+# Preparing the test data
+
+##
+cat("Reading the test data: ", test_rows, " rows. \n")
+test <- fread("/home/paperspace/data/talkingdata/test_added.csv")
+
+##
+cat("Setting up the submission file... \n")
+sub <- data.table(click_id = test$click_id, is_attributed = NA) 
+test$click_id <- NULL
+invisible(gc())
+
+##
+cat("The test set has", nrow(test), "rows and", ncol(test), "columns.\n")
+cat("The column names of the test set are: \n")
+cat(colnames(test), "\n")
+print("The size of the test set is: ") 
+print(object.size(test), units = "auto")
+
+##
+cat("Predictions: \n")
+preds <- predict(model, 
+                 data = data.matrix(
+                   test %>% 
+                     select(-day)),
+                 n = model$best_iter)
+
+#######################################################
+
+cat("Converting to data frame: \n")
+preds <- as.data.frame(preds)
+
+#######################################################
+
+cat("Creating the submission data: \n")
+sub$is_attributed = preds
+
+#######################################################
+
+cat("Removing test... \n")
+rm(test)
+invisible(gc())
+
+#######################################################
+
+cat("Rounding: \n")
+sub$is_attributed = round(sub$is_attributed, 4)
+
+#######################################################
+
+cat("Writing into a csv file: \n")
+fwrite(sub, "sub/lightgbm_r_v5.csv")
+
+#####
+cat("A quick peek at the submission data: \n") 
+head(sub, 10)
+
+
+#####
+
+cat("Feature importance: ")
+kable(lgb.importance(model, percentage = TRUE))
+
+
+cat("\nAll done!..")
+
+
+
+
+
+
+

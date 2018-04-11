@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1523281152525.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "E67C562C",
+    "lastKnownWriteTime" : 1523284054,
+    "last_content_update" : 1523284054930,
+    "path" : "~/mynb/talkingdata/r_project/lgb_r_v6.R",
+    "project_path" : "lgb_r_v6.R",
+    "properties" : {
+        "cursorPosition" : "116,7",
+        "scrollLine" : "108",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
