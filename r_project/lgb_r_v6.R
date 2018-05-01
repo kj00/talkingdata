@@ -18,8 +18,8 @@ train <- fread(train_path, drop = c("day", "ip"),
                colClasses = list(numeric=9:15)
 )
 
-train <- train[hour %in% 4:14]
 ## restrict time as test data
+train <- train[hour %in% 4:14]
 
 
 invisible(gc())
