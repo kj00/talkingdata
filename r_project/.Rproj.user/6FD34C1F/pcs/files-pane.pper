@@ -2,6 +2,10 @@
     "path" : "~/mynb/talkingdata/r_project",
     "sortOrder" : [
         {
+            "ascending" : false,
+            "columnIndex" : 3
+        },
+        {
             "ascending" : true,
             "columnIndex" : 2
         }
