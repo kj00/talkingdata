@@ -1,4 +1,5 @@
 .ipynb_checkpoints/*
 *.csv
-/r_project/mod/*r
-.Rproj.user
+*.rds
+r_project/mod/
+r_project/.Rproj.user/
