@@ -38,7 +38,7 @@ cum_count <-
 
 ##
 cal_delta <-
-  function(data, group, time_var, add_fw) {
+  function(data, group, time_var, add_fw=T) {
     
     col_name <- paste0(c("delta_bc_by", group), collapse = "_")
     
