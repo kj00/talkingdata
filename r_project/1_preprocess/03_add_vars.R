@@ -16,24 +16,39 @@ colnames(train_sep) <-
 
 
 ## read test
-test <- fread("/home/paperspace/data/talkingdata/test_combined.csv")
+test_sup <- fread("/home/paperspace/data/talkingdata/test_supplement.csv")
+#test <- fread("/home/paperspace/data/talkingdata/test.csv")
+  
+  ## add time vars
+test_sup[, `:=`
+     (
+       day = substr(click_time, 9, 10) %>% as.integer(),
+       hour = substr(click_time, 12, 13) %>% as.integer(),
+       minute = substr(click_time, 15, 16) %>% as.integer(),
+       second = substr(click_time, 18, 19) %>% as.integer()
+     )]
+  
 
+
+## match columns
+train_sep$click_id <- NA
+test_sup$is_attributed <- NA
+
+test_sup <- test_sup[, colnames(train_sep), with = F]
 
 ## combine
-train_sep$click_id <- NA
-test$is_attributed <- NA
+train <- rbind(train_sep, test_sup)
 
-test <- test[, colnames(train_sep), with = F]
-
-train <- rbind(train_sep, test)
-
-rm(train_sep, test)
+rm(train_sep, test_sup)
+gc(T)
 
 ## add time
 train[, time := 60 * hour + minute + (1 / 60) * second]
 
 # delete second
 train[, second := NULL]
+
+gc(T)
 
 ## group vars
 ip <- "ip"
@@ -50,6 +65,7 @@ ip_day_hour <- c('ip', 'day', 'hour')
 gc(T)
 cal_delta(train, ip_channel, time_var = "time", add_fw = T)
 train[, time := NULL]
+
 ##
 gc(T)
 count_unique(train, ip, "channel")
@@ -74,13 +90,37 @@ count_all(train, ip_app_os)
 
 ## save
 colnames(train)
-train <- train[!is.na(is_attributed) | !is.na(click_id)]
+
+
 
 # save train
 fwrite(train[!is.na(is_attributed), -"click_id"],
        "tmp/train_added.csv",
        nThread = 4)
+
+
+# reduce data size
+train <- train[is.na(is_attributed)]
+  
+
 # save test
-fwrite(train[is.na(is_attributed)],
+click_id_master <- fread("/home/paperspace/data/talkingdata/test_click_id_relation.csv")
+
+train <- merge(click_id_master, train,
+               by.x = "click_id.testsup",
+               by.y = "click_id",
+               all.x=T)
+
+train[, click_id.testsup := NULL]
+train[, is_attributed := NULL]
+
+train <- train[order(click_id.test)]
+
+colnames(train)[1] <- "click_id"
+
+
+fwrite(train,
        "tmp/test_added.csv",
        nThread = 4)
+
+
