@@ -17,12 +17,12 @@ train %>%
 print("Prepare data for modeling")
 set.seed(1)
 
-valid_start <- ceiling((nrow(train)*0.9))
+val_size <- 2500000
 
-valid <- train[valid_start:nrow(train)]
-train <- train[1:(valid_start-1)]
+valid <- train[(nrow(train)-val_size+1):nrow(train)]
+train <- train[1:(nrow(train)-val_size)]
 
-rm(valid_start)
+rm(val_size)
 gc(T)
 
 #
@@ -86,10 +86,10 @@ invisible(gc())
 cat("Validation AUC @ best iter: ",
     max(unlist(model$record_evals[["validation"]][["auc"]][["eval"]])),
     "\n\n")
-# 0.9835
+# 0.9871 
 
 ## save
-lgb.save(model, "mod/lgb_v8")
+#lgb.save(model, "mod/lgb_v8")
 #model <- lgb.load("mod/lgb_v8")
 
 
