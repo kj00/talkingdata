@@ -45,7 +45,9 @@ cal_delta <-
     print(paste("add", col_name, "..."))
           
     data[, paste0(col_name) :=
-           data.table::shift(get(time_var), fill = 60 * 24 * 3) - get(time_var),
+           data.table::shift(get(time_var),
+                             type = "lag",
+                             fill = 60 * 24 * 3) - get(time_var),
          by = group]
     
     
