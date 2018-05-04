@@ -36,15 +36,16 @@ categorical_features = c("app", "device", "os", "channel", "hour"#,
                          )
 
 # continuous variables must be numeric!!!!
+var_set <- colnames(train[, -"is_attributed"])
 
 dtrain = lgb.Dataset(data = data.matrix(
-  train[, -"is_attributed"]), 
+  train[, var_set, with = F]), 
   label = train$is_attributed, categorical_feature = categorical_features)
 
 #
 cat("Creating the 'dvalid' for modeling...")
 dvalid = lgb.Dataset(
-  data = data.matrix(valid[, -"is_attributed"]),
+  data = data.matrix(valid[, var_set, with = F]),
   label = valid$is_attributed, 
   categorical_feature = categorical_features)
 
@@ -86,10 +87,10 @@ invisible(gc())
 cat("Validation AUC @ best iter: ",
     max(unlist(model$record_evals[["validation"]][["auc"]][["eval"]])),
     "\n\n")
-# 0.9871 
+# 0.9873 
 
 ## save
-#lgb.save(model, "mod/lgb_v8")
+lgb.save(model, "mod/lgb_v8")
 #model <- lgb.load("mod/lgb_v8")
 
 
@@ -106,7 +107,7 @@ invisible(gc())
 
 ##
 preds <- predict(model, 
-                 data = data.matrix(test),
+                 data = data.matrix(test[, var_set, with = F]),
                  n = model$best_iter)
 
 head(preds)
@@ -130,4 +131,4 @@ fwrite(sub, "sub/lightgbm_r_v8.csv", nThread = 8)
 
 ##
 cat("Feature importance: ")
-kable(lgb.importance(model, percentage = TRUE))
+lgb.importance(model, percentage = TRUE)
