@@ -1,11 +1,7 @@
 ##
-pacman::p_load(knitr,
-               tidyverse,
-               data.table,
-               lubridate,
-               zoo,
-               DescTools,
-               lightgbm)
+pacman::p_load(tidyverse,
+               data.table)
+
 
 test_path  <- "/home/paperspace/data/talkingdata/test.csv"
 test_sup_path  <- "/home/paperspace/data/talkingdata/test_supplement.csv"
@@ -15,10 +11,11 @@ test <- fread(test_path,
               colClasses = list(numeric = 2:6),
               showProgress = FALSE)
 
-test_sp <- fread(test_sup_path,
+testtest_sp <- fread(test_sup_path,
                  colClasses = list(numeric = 2:6),
-                 showProgress = FALSE,
-                 drop = "click_id")
+                 showProgress = FALSE)
+#                 drop = "click_id")
+
 test_sp <- test_sp[click_time >= "2017-11-10"]
 
 test_sp$click_id <- NA
