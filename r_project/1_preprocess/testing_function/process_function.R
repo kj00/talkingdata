@@ -37,30 +37,44 @@ cum_count <-
 
 
 ##
-cal_delta <-
-  function(data, group, time_var, add_fw=T) {
+cal_delta_both <-
+  function(data, group, time_var, add_prev=T) {
     
-    col_name <- paste0(c("delta_bc_by", group), collapse = "_")
+    col_name <- paste0(c("delta_nextclick_by", group), collapse = "_")
     
     print(paste("add", col_name, "..."))
           
     data[, paste0(col_name) :=
            data.table::shift(get(time_var),
-                             type = "lag",
-                             fill = 60 * 24 * 3) - get(time_var),
+                             type = "lead") - get(time_var),
          by = group]
     
-    
-    if (add_fw == T) {
+    if (add_prev) {
       
-      col_name_fw <- paste0(c("delta_fw_by", group), collapse = "_")
+      col_name_fw <- paste0(c("delta_prevlick_by", group), collapse = "_")
       print(paste("add", col_name_fw, "..."))
       
       data[, paste0(col_name_fw) :=
-             data.table::shift(get(col_name), type = "lead", fill = 60 * 24 *
-                                 3)]
+             data.table::shift(get(col_name), type = "lag")]
     }
   }
+
+
+cal_delta_only_prev <-
+  function(data, group, time_var) {
+    
+    col_name <- paste0(c("delta_prevclick_by", group), collapse = "_")
+    
+    print(paste("add", col_name, "..."))
+    
+    data[, paste0(col_name) :=
+           get(time_var) - data.table::shift(get(time_var), type = "lag"),
+         by = group]
+  }
+
+
+
+
 
 
 ##

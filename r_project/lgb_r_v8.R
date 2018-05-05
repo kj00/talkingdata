@@ -1,11 +1,11 @@
-pacman::p_load(tidyverse, data.table, lightgbm, caret)
+pacman::p_load(tidyverse, data.table, lightgbm)
 options(scipen = 9999, warn = -1, digits= 4)
 
 
 ##
 train  <- fread("tmp/train_added.csv",
                 drop = c("day", "minute", "ip"),
-                colClasses = list("numeric" = 1:23))
+                colClasses = list("numeric" = 2:27))
 
 # check all columns are double
 train %>% 
@@ -16,7 +16,6 @@ train %>%
 ## prepare modeling
 print("Prepare data for modeling")
 set.seed(1)
-
 val_size <- 2500000
 
 valid <- train[(nrow(train)-val_size+1):nrow(train)]
@@ -30,9 +29,13 @@ cat("train size : ", dim(train), "\n")
 cat("valid size : ", dim(valid), "\n")
 
 #
-categorical_features = c("app", "device", "os", "channel", "hour"#,
-                         #"ip",
-                         #"minute"
+categorical_features = c("app"
+                         ,"device"
+                         ,"os",
+                         "channel"
+                         ,"hour"
+                         #,"ip"
+                         #,"minute"
                          )
 
 # continuous variables must be numeric!!!!
@@ -55,19 +58,23 @@ invisible(gc())
 
 ## modeling
 print("Modelling")
-params = list(objective = "binary", 
+params = list(boosting_type="gbdt",
+              objective = "binary", 
               tree_learner="data",
               metric = "auc", 
-              learning_rate= 0.1,
-              num_leaves= 7,
-              max_depth= 3,
-              min_child_samples= 100,
-              max_bin= 100,
-              subsample= 0.7, 
-              subsample_freq= 1,
-              colsample_bytree= 0.9,
-              min_child_weight= 0,
-#              min_split_gain= 0,
+              learning_rate= 0.04,
+              num_leaves= 31,
+              max_depth= -1,
+              min_child_samples= 20,
+              max_bin= 255,
+              subsample= 0.6, 
+              subsample_freq= 0,
+              colsample_bytree= 0.3,
+              min_child_weight= 5,
+              subsample_for_bin = 20000,
+              min_split_gain= 0,
+              reg_alpha=0.99,
+              reg_lambda=0.9,
               scale_pos_weight= 200)
 
 # train
@@ -87,7 +94,7 @@ invisible(gc())
 cat("Validation AUC @ best iter: ",
     max(unlist(model$record_evals[["validation"]][["auc"]][["eval"]])),
     "\n\n")
-# 0.9873 
+# 0.9797 
 
 ## save
 lgb.save(model, "mod/lgb_v8")
@@ -96,8 +103,8 @@ lgb.save(model, "mod/lgb_v8")
 
 ## evaluate test
 test <- fread("tmp/test_added.csv",
+              colClasses = list("numeric" = 2:27),
               drop = c("day", "ip", "minute"))
-
 
 ##
 cat("Setting up the submission file... \n")
@@ -114,14 +121,14 @@ head(preds)
 
 
 ##
-preds <- as.data.frame(preds)
-sub$is_attributed = preds
+sub$is_attributed[] = preds
+
 rm(test)
 invisible(gc())
 
 ##
 cat("Rounding: \n")
-sub$is_attributed = round(sub$is_attributed, 4)
+#sub$is_attributed = round(sub$is_attributed, 4)
 
 ##
 cat("Writing into a csv file: \n")

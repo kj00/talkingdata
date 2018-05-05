@@ -5,48 +5,65 @@ pacman::p_load(tidyverse,
 ## read functions
 source("1_preprocess/testing_function/process_function.R")
 
-## read train @day9
-ii <- 9
+## read train
+nrows=184903891#-1
+nchunk=25000000
+val_size=2500000
+frm=nrows-65000000
 
-train_sep <-
-  fread(paste0("/home/paperspace/data/talkingdata/train_sep_", ii, ".csv"))
+# if debug:
+#   frm=0
+# nchunk=100000
+# val_size=10000
 
-colnames(train_sep) <- 
-  stringr::str_replace(colnames(train_sep), "secound", "second")
+to=frm+nchunk
+nchunk
 
+train_col <-   fread("/home/paperspace/data/talkingdata/train.csv",
+                     nrow=1,
+                     drop = "attributed_time") %>%colnames()
+
+train <-
+  fread("/home/paperspace/data/talkingdata/train.csv",
+        drop = 7, skip = frm, nrow = nchunk, header = F)
+
+
+colnames(train) <- train_col
 
 ## read test
-test_sup <- fread("/home/paperspace/data/talkingdata/test_supplement.csv")
+test <- fread("/home/paperspace/data/talkingdata/test_supplement.csv")
 #test <- fread("/home/paperspace/data/talkingdata/test.csv")
   
-  ## add time vars
-test_sup[, `:=`
-     (
-       day = substr(click_time, 9, 10) %>% as.integer(),
-       hour = substr(click_time, 12, 13) %>% as.integer(),
-       minute = substr(click_time, 15, 16) %>% as.integer(),
-       second = substr(click_time, 18, 19) %>% as.integer()
-     )]
-  
-
 
 ## match columns
-train_sep$click_id <- NA
-test_sup$is_attributed <- NA
+train[, click_id := NA]
+test[, is_attributed := NA]
 
-test_sup <- test_sup[, colnames(train_sep), with = F]
 
 ## combine
-train <- rbind(train_sep, test_sup)
+train <- rbind(train, test)
 
-rm(train_sep, test_sup)
+rm(test)
 gc(T)
 
-## add time
-train[, time := 60 * hour + minute + (1 / 60) * second]
 
-# delete second
-train[, second := NULL]
+## add time vars
+train[,  `:=` (
+  day = substr(click_time, 9, 10) %>% as.integer(),
+  hour = substr(click_time, 12, 13) %>% as.integer(),
+  minute = substr(click_time, 15, 16) %>% as.integer(),
+  second = substr(click_time, 18, 19) %>% as.integer()
+)]
+
+train[, click_time := NULL]
+
+
+## add time
+train[, time := 60 * (day * 24 + hour) + minute + (1 / 60) * second]
+
+# delete day and second
+train[, `:=` (
+  second = NULL)]
 
 gc(T)
 
@@ -62,8 +79,15 @@ ip_day_hour <- c('ip', 'day', 'hour')
 
 
 ##
-gc(T)
-cal_delta(train, ip_channel, time_var = "time", add_fw = T)
+#train<- train[1:1000000]
+cal_delta_both(train, c("ip", "app", "device", "os", "channel"), time_var = "time", add_prev = F)
+cal_delta_both(train, ip_device_os, time_var = "time", add_prev = F)
+cal_delta_both(train, c(ip_device_os, "app"), time_var = "time", add_prev = F)
+
+cal_delta_only_prev(train, ip_channel, "time")
+cal_delta_only_prev(train, ip_os, "time")
+
+
 train[, time := NULL]
 
 ##
@@ -88,10 +112,12 @@ count_all(train, ip_day_hour)
 count_all(train, ip_app)
 count_all(train, ip_app_os)
 
+##
+cal_var(train, ip_app_os, "hour")
+
+
 ## save
 colnames(train)
-
-
 
 # save train
 fwrite(train[!is.na(is_attributed), -"click_id"],
@@ -122,5 +148,3 @@ colnames(train)[1] <- "click_id"
 fwrite(train,
        "tmp/test_added.csv",
        nThread = 4)
-
-
